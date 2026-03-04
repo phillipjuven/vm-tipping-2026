@@ -1,0 +1,170 @@
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String   @id @default(cuid())
+  name       String?
+  email      String?  @unique
+  image      String?
+  accounts   Account[]
+  sessions   Session[]
+  members    PoolMember[]
+  picksGroup PickGroup[]
+  picksStage PickStage[]
+  picksAward PickAward[]
+  snapshots  ScoreSnapshot[]
+  createdAt  DateTime @default(now())
+}
+
+model Pool {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  lockAt    DateTime
+  members   PoolMember[]
+  createdAt DateTime @default(now())
+}
+
+model PoolMember {
+  id        String  @id @default(cuid())
+  poolId    String
+  userId    String
+  role      String  @default("member")
+  joinedAt  DateTime @default(now())
+  @@unique([poolId, userId])
+}
+
+model Team {
+  id      String  @id
+  name    String
+  tla     String?
+  flagUrl String?
+}
+
+model Group {
+  id    String @id
+  label String @unique
+}
+
+model GroupTeam {
+  id      String @id @default(cuid())
+  groupId String
+  teamId  String
+  seed    Int?
+  @@unique([groupId, teamId])
+}
+
+model Fixture {
+  id        String   @id
+  stage     String
+  groupId   String?
+  homeId    String
+  awayId    String
+  utcStart  DateTime
+  status    String
+  scoreHome Int?
+  scoreAway Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Standing {
+  id        String   @id @default(cuid())
+  groupId   String
+  teamId    String
+  pos       Int
+  played    Int
+  won       Int
+  draw      Int
+  lost      Int
+  gf        Int
+  ga        Int
+  gd        Int
+  pts       Int
+  updatedAt DateTime @updatedAt
+  @@unique([groupId, teamId])
+}
+
+model PickGroup {
+  id            String   @id @default(cuid())
+  userId        String
+  poolId        String
+  groupId       String
+  teamId        String
+  predictedRank Int
+  submittedAt   DateTime @default(now())
+  @@unique([userId, poolId, groupId, teamId])
+}
+
+model PickStage {
+  id     String   @id @default(cuid())
+  userId String
+  poolId String
+  stage  String
+  teamId String
+  @@unique([userId, poolId, stage, teamId])
+}
+
+model PickAward {
+  id       String   @id @default(cuid())
+  userId   String
+  poolId   String
+  category String
+  playerId String
+  rank     Int
+  @@unique([userId, poolId, category, rank])
+}
+
+model ScoreSnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  poolId       String
+  at           DateTime @default(now())
+  pointsGroup  Int
+  pointsStage  Int
+  pointsAwards Int
+  total        Int
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  oauth_token_secret String?
+  oauth_token        String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
