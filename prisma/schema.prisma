@@ -68,11 +68,22 @@ model Team {
   name    String
   tla     String?
   flagUrl String?
+
+  // Back-relations (motsatt side av feltene som peker til Team)
+  groupTeams  GroupTeam[]   // from GroupTeam.team
+  standings   Standing[]    // from Standing.team
+  pickGroups  PickGroup[]   // from PickGroup.team
+  pickStages  PickStage[]   // from PickStage.team
 }
 
 model Group {
   id    String @id
   label String @unique
+
+  // Back-relations (motsatt side av feltene som peker til Group)
+  groupTeams GroupTeam[]    // from GroupTeam.group
+  standings  Standing[]     // from Standing.group
+  picks      PickGroup[]    // from PickGroup.group
 }
 
 model GroupTeam {
