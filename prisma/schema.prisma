@@ -1,4 +1,3 @@
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,11 +7,17 @@ generator client {
   provider = "prisma-client-js"
 }
 
+/** =========================
+ *  BRUKERE & POOL
+ *  ========================= */
+
 model User {
   id         String   @id @default(cuid())
   name       String?
   email      String?  @unique
   image      String?
+
+  // Relasjoner (motsatt side ligger i under-modellene)
   accounts   Account[]
   sessions   Session[]
   members    PoolMember[]
@@ -20,6 +25,7 @@ model User {
   picksStage PickStage[]
   picksAward PickAward[]
   snapshots  ScoreSnapshot[]
+
   createdAt  DateTime @default(now())
 }
 
@@ -28,18 +34,35 @@ model Pool {
   name      String
   ownerId   String
   lockAt    DateTime
+
+  // Relasjoner (motsatt side i PoolMember/Pick*/Snapshot)
   members   PoolMember[]
+  picksGroup PickGroup[]
+  picksStage PickStage[]
+  picksAward PickAward[]
+  snapshots  ScoreSnapshot[]
+
   createdAt DateTime @default(now())
 }
 
+/** Kobling User <-> Pool */
 model PoolMember {
-  id        String  @id @default(cuid())
-  poolId    String
-  userId    String
-  role      String  @default("member")
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  poolId   String
+  userId   String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  // Motsatt side av User.members og Pool.members
+  user User @relation(fields: [userId], references: [id])
+  pool Pool @relation(fields: [poolId], references: [id])
+
   @@unique([poolId, userId])
 }
+
+/** =========================
+ *  TURNERINGSENTITETER
+ *  ========================= */
 
 model Team {
   id      String  @id
@@ -49,7 +72,7 @@ model Team {
 }
 
 model Group {
-  id    String @id
+  id    String @id            // f.eks. "A".."L"
   label String @unique
 }
 
@@ -58,17 +81,21 @@ model GroupTeam {
   groupId String
   teamId  String
   seed    Int?
+
+  group Group @relation(fields: [groupId], references: [id])
+  team  Team  @relation(fields: [teamId], references: [id])
+
   @@unique([groupId, teamId])
 }
 
 model Fixture {
   id        String   @id
-  stage     String
+  stage     String               // "GROUP","R32","R16","QF","SF","F","3P"
   groupId   String?
-  homeId    String
+  homeId    String               // holder disse som “scalar” for enkelhet
   awayId    String
   utcStart  DateTime
-  status    String
+  status    String               // SCHEDULED, LIVE, IN_PLAY, FINISHED...
   scoreHome Int?
   scoreAway Int?
   createdAt DateTime @default(now())
@@ -89,8 +116,16 @@ model Standing {
   gd        Int
   pts       Int
   updatedAt DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id])
+  team  Team  @relation(fields: [teamId], references: [id])
+
   @@unique([groupId, teamId])
 }
+
+/** =========================
+ *  TIPPING (PICKS) & SCORE
+ *  ========================= */
 
 model PickGroup {
   id            String   @id @default(cuid())
@@ -100,6 +135,14 @@ model PickGroup {
   teamId        String
   predictedRank Int
   submittedAt   DateTime @default(now())
+
+  // Motsatt side av User.picksGroup og Pool.picksGroup
+  user  User  @relation(fields: [userId], references: [id])
+  pool  Pool  @relation(fields: [poolId], references: [id])
+
+  group Group @relation(fields: [groupId], references: [id])
+  team  Team  @relation(fields: [teamId], references: [id])
+
   @@unique([userId, poolId, groupId, teamId])
 }
 
@@ -107,8 +150,13 @@ model PickStage {
   id     String   @id @default(cuid())
   userId String
   poolId String
-  stage  String
+  stage  String    // QF,SF,F,WIN
   teamId String
+
+  user  User @relation(fields: [userId], references: [id])
+  pool  Pool @relation(fields: [poolId], references: [id])
+  team  Team @relation(fields: [teamId], references: [id])
+
   @@unique([userId, poolId, stage, teamId])
 }
 
@@ -116,9 +164,13 @@ model PickAward {
   id       String   @id @default(cuid())
   userId   String
   poolId   String
-  category String
-  playerId String
-  rank     Int
+  category String   // TOP_SCORER,GOLDEN_BALL,ASSISTS
+  playerId String   // ingen Player-tabell her – bruker id som tekst
+  rank     Int      // 1..3
+
+  user  User @relation(fields: [userId], references: [id])
+  pool  Pool @relation(fields: [poolId], references: [id])
+
   @@unique([userId, poolId, category, rank])
 }
 
@@ -131,24 +183,32 @@ model ScoreSnapshot {
   pointsStage  Int
   pointsAwards Int
   total        Int
+
+  user User @relation(fields: [userId], references: [id])
+  pool Pool @relation(fields: [poolId], references: [id])
 }
 
+/** =========================
+ *  NEXTAUTH
+ *  ========================= */
+
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
   oauth_token_secret String?
   oauth_token        String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
