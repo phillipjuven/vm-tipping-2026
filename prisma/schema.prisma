@@ -7,9 +7,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-/** =========================
- *  BRUKERE & POOL
- *  ========================= */
+// =========================
+//  BRUKERE & POOL
+// =========================
 
 model User {
   id         String   @id @default(cuid())
@@ -17,7 +17,7 @@ model User {
   email      String?  @unique
   image      String?
 
-  // Relasjoner (motsatt side ligger i under-modellene)
+  // Relasjoner
   accounts   Account[]
   sessions   Session[]
   members    PoolMember[]
@@ -35,8 +35,8 @@ model Pool {
   ownerId   String
   lockAt    DateTime
 
-  // Relasjoner (motsatt side i PoolMember/Pick*/Snapshot)
-  members   PoolMember[]
+  // Relasjoner
+  members    PoolMember[]
   picksGroup PickGroup[]
   picksStage PickStage[]
   picksAward PickAward[]
@@ -45,7 +45,7 @@ model Pool {
   createdAt DateTime @default(now())
 }
 
-/** Kobling User <-> Pool */
+// Kobling User <-> Pool
 model PoolMember {
   id       String   @id @default(cuid())
   poolId   String
@@ -53,16 +53,15 @@ model PoolMember {
   role     String   @default("member")
   joinedAt DateTime @default(now())
 
-  // Motsatt side av User.members og Pool.members
   user User @relation(fields: [userId], references: [id])
   pool Pool @relation(fields: [poolId], references: [id])
 
   @@unique([poolId, userId])
 }
 
-/** =========================
- *  TURNERINGSENTITETER
- *  ========================= */
+// =========================
+//  TURNERINGSENTITETER
+// =========================
 
 model Team {
   id      String  @id
@@ -72,7 +71,7 @@ model Team {
 }
 
 model Group {
-  id    String @id            // f.eks. "A".."L"
+  id    String @id
   label String @unique
 }
 
@@ -92,7 +91,7 @@ model Fixture {
   id        String   @id
   stage     String               // "GROUP","R32","R16","QF","SF","F","3P"
   groupId   String?
-  homeId    String               // holder disse som “scalar” for enkelhet
+  homeId    String
   awayId    String
   utcStart  DateTime
   status    String               // SCHEDULED, LIVE, IN_PLAY, FINISHED...
@@ -123,9 +122,9 @@ model Standing {
   @@unique([groupId, teamId])
 }
 
-/** =========================
- *  TIPPING (PICKS) & SCORE
- *  ========================= */
+// =========================
+//  TIPPING (PICKS) & SCORE
+// =========================
 
 model PickGroup {
   id            String   @id @default(cuid())
@@ -136,10 +135,8 @@ model PickGroup {
   predictedRank Int
   submittedAt   DateTime @default(now())
 
-  // Motsatt side av User.picksGroup og Pool.picksGroup
   user  User  @relation(fields: [userId], references: [id])
   pool  Pool  @relation(fields: [poolId], references: [id])
-
   group Group @relation(fields: [groupId], references: [id])
   team  Team  @relation(fields: [teamId], references: [id])
 
@@ -165,7 +162,7 @@ model PickAward {
   userId   String
   poolId   String
   category String   // TOP_SCORER,GOLDEN_BALL,ASSISTS
-  playerId String   // ingen Player-tabell her – bruker id som tekst
+  playerId String   // fri tekst-ID
   rank     Int      // 1..3
 
   user  User @relation(fields: [userId], references: [id])
@@ -188,9 +185,9 @@ model ScoreSnapshot {
   pool Pool @relation(fields: [poolId], references: [id])
 }
 
-/** =========================
- *  NEXTAUTH
- *  ========================= */
+// =========================
+//  NEXTAUTH
+// =========================
 
 model Account {
   id                 String  @id @default(cuid())
